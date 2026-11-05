@@ -47,7 +47,7 @@ jobs:
       - name: Test the fork's patches
         run: >
           sh ./mvnw -B install -pl modules/lib -am
-          -Dtest='CloudWebhookOverrideTest,CloudWabaTest,CloudWebhookDecoderTest,CloudWebhookFieldsTest'
+          -Dtest='CloudWebhookOverrideTest,CloudWabaTest,CloudWebhookDecoderTest,CloudWebhookFieldsTest,CloudContextualReplyTest,CloudTemplateSendTest,CloudTemplateManagementTest,CloudBusinessProfileTest'
           -Dsurefire.failIfNoSpecifiedTests=false
 
       - name: Deploy to GitHub Packages

@@ -15,6 +15,8 @@ The SocialLabs backend uses this fork of [Auties00/Cobalt](https://github.com/Au
 |--------------------------|----------------------------------------------------------------------------------------------|
 | `feat/webhook-override`  | Webhook callback overrides for the WABA and the phone number; `querySubscribedApps` reads the override where Graph reports it |
 | `feat/cloud-context-filename` | Sending: `context.message_id` for a message quoting another (contextual reply), `document.filename` for a named document |
+| `feat/cloud-template-send` | `sendTemplate` with Cloud's own template model (named, currency, date, header media/location, button payload/URL suffix/coupon/flow values); template examples sent as JSON, URL button examples, `parameter_format` |
+| `feat/cloud-business-profile` | `queryCloudBusinessProfile`/`editCloudBusinessProfile` with `about`, `vertical`, `profile_picture_url`/`profile_picture_handle` |
 
 ## Releasing
 1. Merge or rebase the `feat/*` branches into `sociallabs`.
