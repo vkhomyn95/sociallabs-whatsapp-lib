@@ -3,6 +3,9 @@ name: build-natives
 on:
   workflow_dispatch:
   push:
+    # SocialLabs fork: release tags must not rebuild the natives (tags ignore the paths filter)
+    branches:
+      - '**'
     paths:
       - '.github/scripts/build-natives.sh'
       - '.github/scripts/regenerate-manifest.sh'
