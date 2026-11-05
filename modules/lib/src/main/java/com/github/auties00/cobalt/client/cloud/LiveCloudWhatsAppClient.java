@@ -581,6 +581,54 @@ public final class LiveCloudWhatsAppClient implements CloudWhatsAppClient {
      * {@inheritDoc}
      */
     @Override
+    public Optional<CloudBusinessProfile> queryCloudBusinessProfile() {
+        var response = api.get(store.phoneNumberId() + "/whatsapp_business_profile",
+                Map.of("fields", "about,address,description,email,websites,vertical,profile_picture_url"));
+        var data = response.getJSONArray("data");
+        if (data == null || data.isEmpty()) {
+            return Optional.empty();
+        }
+        var node = data.getJSONObject(0);
+        var websites = new ArrayList<String>();
+        var array = node.getJSONArray("websites");
+        if (array != null) {
+            for (var index = 0; index < array.size(); index++) {
+                websites.add(array.getString(index));
+            }
+        }
+        return Optional.of(new CloudBusinessProfile(
+                node.getString("about"),
+                node.getString("address"),
+                node.getString("description"),
+                node.getString("email"),
+                websites,
+                node.getString("vertical"),
+                node.getString("profile_picture_url")));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void editCloudBusinessProfile(CloudBusinessProfileEdit edit) {
+        Objects.requireNonNull(edit, "edit must not be null");
+        var body = new JSONObject();
+        body.put("messaging_product", "whatsapp");
+        edit.about().ifPresent(value -> body.put("about", value));
+        edit.address().ifPresent(value -> body.put("address", value));
+        edit.description().ifPresent(value -> body.put("description", value));
+        edit.email().ifPresent(value -> body.put("email", value));
+        edit.websites().ifPresent(value -> body.put("websites", new JSONArray(value)));
+        edit.vertical().ifPresent(value -> body.put("vertical", value));
+        edit.profilePictureHandle().ifPresent(value -> body.put("profile_picture_handle", value));
+        api.post(store.phoneNumberId() + "/whatsapp_business_profile", body);
+        if (Log.DEBUG) LOGGER.log(Level.DEBUG, "edited cloud business profile");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void blockContact(JidProvider contact) {
         api.post(store.phoneNumberId() + "/block_users", blockUsersBody(contact));
         if (Log.DEBUG) LOGGER.log(Level.DEBUG, "blocked contact {0}", contact.toJid());
