@@ -628,12 +628,14 @@ public final class LiveCloudWhatsAppClient implements CloudWhatsAppClient {
         body.put("name", template.name());
         body.put("language", template.language());
         body.put("category", template.category().token());
+        template.parameterFormat().ifPresent(value -> body.put("parameter_format", value.name()));
         if (!template.components().isEmpty()) {
             body.put("components", CloudMessageEncoder.encodeTemplateComponents(template.components()));
         }
         var response = api.post(requireWaba() + "/message_templates", body);
         var created = new CloudMessageTemplate(response.getString("id"), template.name(), template.language(),
-                template.category(), CloudTemplateStatus.of(response.getString("status")), template.components());
+                template.category(), CloudTemplateStatus.of(response.getString("status")), template.components(),
+                template.parameterFormat().orElse(null));
         if (Log.DEBUG) LOGGER.log(Level.DEBUG, "created message template {0}, status {1}",
                 created.id().orElse(null), created.status().orElse(null));
         return created;
@@ -718,7 +720,7 @@ public final class LiveCloudWhatsAppClient implements CloudWhatsAppClient {
     public Optional<CloudMessageTemplate> queryMessageTemplateById(String templateId) {
         Objects.requireNonNull(templateId, "templateId must not be null");
         var response = api.get(templateId,
-                Map.of("fields", "id,name,language,category,status,components"));
+                Map.of("fields", "id,name,language,category,status,components,parameter_format"));
         if (response == null || response.getString("id") == null) {
             return Optional.empty();
         }
@@ -2118,6 +2120,30 @@ public final class LiveCloudWhatsAppClient implements CloudWhatsAppClient {
         }
         var node = data.getJSONObject(0);
         return Optional.of(new CloudProductCatalog(node.getString("id"), node.getString("name")));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public MessageKey sendTemplate(JidProvider recipient, CloudTemplateMessage template) {
+        Objects.requireNonNull(recipient, "recipient must not be null");
+        Objects.requireNonNull(template, "template must not be null");
+        var body = new JSONObject();
+        body.put("messaging_product", "whatsapp");
+        body.put("recipient_type", "individual");
+        body.put("to", recipient.toJid().user());
+        body.put("type", "template");
+        body.put("template", CloudMessageEncoder.encodeTemplateMessage(template));
+        var response = api.post(store.phoneNumberId() + "/messages", body);
+        var key = new MessageKeyBuilder()
+                .id(firstMessageId(response))
+                .parentJid(recipient.toJid())
+                .fromMe(true)
+                .build();
+        if (Log.DEBUG) LOGGER.log(Level.DEBUG, "sent template {0} to {1}, id {2}",
+                template.name(), recipient.toJid(), key.id().orElse(null));
+        return key;
     }
 
     /**
@@ -3664,7 +3690,8 @@ public final class LiveCloudWhatsAppClient implements CloudWhatsAppClient {
                 node.getString("language"),
                 CloudTemplateCategory.of(node.getString("category")),
                 CloudTemplateStatus.of(node.getString("status")),
-                CloudMessageEncoder.decodeTemplateComponents(node.getJSONArray("components")));
+                CloudMessageEncoder.decodeTemplateComponents(node.getJSONArray("components")),
+                CloudTemplateParameterFormat.of(node.getString("parameter_format")));
     }
 
     /**

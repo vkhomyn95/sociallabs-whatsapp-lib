@@ -84,9 +84,16 @@ public sealed interface CloudTemplateButton permits CloudTemplateButton.QuickRep
          * @param url  the URL the button opens
          * @throws NullPointerException if {@code text} or {@code url} is {@code null}
          */
-        Url(String text, String url) {
+        /**
+         * The Cloud {@code example} of a dynamic URL, as JSON text; {@code null} when absent.
+         */
+        @ProtobufProperty(index = 3, type = ProtobufType.STRING)
+        final String example;
+
+        Url(String text, String url, String example) {
             this.text = Objects.requireNonNull(text, "text must not be null");
             this.url = Objects.requireNonNull(url, "url must not be null");
+            this.example = example;
         }
 
         /**
@@ -105,6 +112,15 @@ public sealed interface CloudTemplateButton permits CloudTemplateButton.QuickRep
          */
         public String url() {
             return url;
+        }
+
+        /**
+         * Returns the example of a dynamic URL, as the JSON text of Cloud's {@code example} array.
+         *
+         * @return an {@link Optional} carrying the example, or empty when the URL is static
+         */
+        public Optional<String> example() {
+            return Optional.ofNullable(example);
         }
     }
 
