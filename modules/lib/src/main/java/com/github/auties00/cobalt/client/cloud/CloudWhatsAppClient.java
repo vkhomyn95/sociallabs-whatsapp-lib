@@ -81,6 +81,23 @@ public sealed interface CloudWhatsAppClient extends WhatsAppClient<CloudWhatsApp
     }
 
     /**
+     * Sends an approved message template, filling its variables.
+     *
+     * <p>Unlike sending a template through the linked message model, this carries every kind of value Cloud
+     * accepts: text (positional or named), currency, date, the media or location of the header, the payload of a
+     * quick-reply button, the suffix of a dynamic URL button, a coupon code and a flow action. A template is the
+     * only message a business may start a conversation with, or send outside the customer service window.
+     *
+     * @param recipient the consumer to message
+     * @param template  the template and the values of its variables
+     * @return the key identifying the sent message
+     * @throws NullPointerException if {@code recipient} or {@code template} is {@code null}
+     * @throws CloudAuthException if the access token is missing or rejected
+     * @throws CloudApiException if the Graph request fails
+     */
+    MessageKey sendTemplate(JidProvider recipient, CloudTemplateMessage template);
+
+    /**
      * Sends an interactive message that renders a single catalog product to a consumer.
      *
      * <p>Delivers the product carried by {@code product} as a rich card the consumer can tap to view

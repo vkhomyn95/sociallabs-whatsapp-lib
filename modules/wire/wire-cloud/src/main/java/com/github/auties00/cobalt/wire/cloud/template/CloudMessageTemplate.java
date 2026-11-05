@@ -13,9 +13,9 @@ import java.util.Optional;
  * {@link CloudTemplateStatus review status}, and the ordered list of typed
  * {@link CloudTemplateComponent} definitions (header, body, footer, buttons, and carousel).
  *
- * <p>Sending a message that uses an approved template is done through the universal message model
- * rather than this type: build a template message container and pass it to the client's send method.
- * This type governs the template library, not the act of sending.
+ * <p>Sending a message that uses an approved template is done with a {@link CloudTemplateMessage}, which
+ * carries the values of the template's variables. This type governs the template library, not the act of
+ * sending.
  */
 public final class CloudMessageTemplate {
     /**
@@ -49,6 +49,11 @@ public final class CloudMessageTemplate {
     private final List<CloudTemplateComponent> components;
 
     /**
+     * How the template's variables are written, or {@code null} when not reported.
+     */
+    private final CloudTemplateParameterFormat parameterFormat;
+
+    /**
      * Constructs a new message template.
      *
      * @param id         the server-assigned id, or {@code null} before creation
@@ -62,6 +67,27 @@ public final class CloudMessageTemplate {
      */
     public CloudMessageTemplate(String id, String name, String language, CloudTemplateCategory category,
                                 CloudTemplateStatus status, List<CloudTemplateComponent> components) {
+        this(id, name, language, category, status, components, null);
+    }
+
+    /**
+     * Constructs a new message template whose variables are written in the given format.
+     *
+     * @param id              the server-assigned id, or {@code null} before creation
+     * @param name            the template name
+     * @param language        the BCP-47 language code
+     * @param category        the template category
+     * @param status          the review status, or {@code null} before review
+     * @param components      the ordered typed component definitions, or {@code null} when none were declared
+     * @param parameterFormat how the variables are written ({@code {{1}}} or {@code {{name}}}), or {@code null}
+     *                        for the server's default, positional
+     * @throws NullPointerException if {@code name}, {@code language}, or {@code category} is
+     *                              {@code null}
+     */
+    public CloudMessageTemplate(String id, String name, String language, CloudTemplateCategory category,
+                                CloudTemplateStatus status, List<CloudTemplateComponent> components,
+                                CloudTemplateParameterFormat parameterFormat) {
+        this.parameterFormat = parameterFormat;
         this.id = id;
         this.name = Objects.requireNonNull(name, "name must not be null");
         this.language = Objects.requireNonNull(language, "language must not be null");
@@ -122,5 +148,14 @@ public final class CloudMessageTemplate {
      */
     public List<CloudTemplateComponent> components() {
         return components;
+    }
+
+    /**
+     * Returns how the template's variables are written.
+     *
+     * @return an {@link Optional} carrying the format, or empty when not reported
+     */
+    public Optional<CloudTemplateParameterFormat> parameterFormat() {
+        return Optional.ofNullable(parameterFormat);
     }
 }

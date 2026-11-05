@@ -1,5 +1,6 @@
 package com.github.auties00.cobalt.cloud;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.github.auties00.cobalt.telemetry.log.Log;
@@ -16,6 +17,9 @@ import com.github.auties00.cobalt.wire.cloud.template.CloudTemplateComponentFoot
 import com.github.auties00.cobalt.wire.cloud.template.CloudTemplateComponentHeaderBuilder;
 import com.github.auties00.cobalt.wire.cloud.template.CloudOtpType;
 import com.github.auties00.cobalt.wire.cloud.template.CloudTemplateHeaderFormat;
+import com.github.auties00.cobalt.wire.cloud.template.CloudTemplateMessage;
+import com.github.auties00.cobalt.wire.cloud.template.CloudTemplateMessageComponent;
+import com.github.auties00.cobalt.wire.cloud.template.CloudTemplateParameter;
 import com.github.auties00.cobalt.wire.core.jid.JidProvider;
 import com.github.auties00.cobalt.wire.linked.message.LinkedMessageContainer;
 import com.github.auties00.cobalt.wire.linked.message.commerce.ButtonsMessage;
@@ -756,6 +760,135 @@ public final class CloudMessageEncoder {
     }
 
     /**
+     * Writes a template definition's {@code example}.
+     *
+     * <p>Cloud takes the example as an object ({@code header_text}, {@code body_text},
+     * {@code body_text_named_params}, {@code header_handle}) or, for a URL button, an array; the model keeps it as
+     * the JSON text the server returned, so JSON text is written back as JSON and anything else as given.
+     *
+     * @param node    the component or button object
+     * @param example the example
+     */
+    private static void putExample(JSONObject node, String example) {
+        var text = example.strip();
+        if (text.startsWith("{") || text.startsWith("[")) {
+            node.put("example", JSON.parse(text));
+        } else {
+            node.put("example", example);
+        }
+    }
+
+    /**
+     * Builds the {@code template} object of a {@code /messages} request.
+     *
+     * @param template the template to send and the values of its variables
+     * @return the {@code template} object
+     */
+    public static JSONObject encodeTemplateMessage(CloudTemplateMessage template) {
+        var language = new JSONObject();
+        language.put("code", template.languageCode());
+        var node = new JSONObject();
+        node.put("name", template.name());
+        node.put("language", language);
+        if (!template.components().isEmpty()) {
+            var components = new JSONArray();
+            for (var component : template.components()) {
+                components.add(encodeTemplateMessageComponent(component));
+            }
+            node.put("components", components);
+        }
+        return node;
+    }
+
+    /**
+     * Encodes the values of one component of a template being sent.
+     *
+     * @param component the component
+     * @return the component object
+     */
+    private static JSONObject encodeTemplateMessageComponent(CloudTemplateMessageComponent component) {
+        var node = new JSONObject();
+        switch (component) {
+            case CloudTemplateMessageComponent.Header ignored -> node.put("type", "header");
+            case CloudTemplateMessageComponent.Body ignored -> node.put("type", "body");
+            case CloudTemplateMessageComponent.Button button -> {
+                node.put("type", "button");
+                node.put("sub_type", button.subType().token());
+                node.put("index", String.valueOf(button.index()));
+            }
+        }
+        var parameters = new JSONArray();
+        for (var parameter : component.parameters()) {
+            parameters.add(encodeTemplateParameter(parameter));
+        }
+        node.put("parameters", parameters);
+        return node;
+    }
+
+    /**
+     * Encodes the value of one template variable.
+     *
+     * @param parameter the value
+     * @return the parameter object
+     */
+    private static JSONObject encodeTemplateParameter(CloudTemplateParameter parameter) {
+        var node = new JSONObject();
+        switch (parameter) {
+            case CloudTemplateParameter.Text text -> {
+                node.put("type", "text");
+                node.put("text", text.text());
+                text.parameterName().ifPresent(value -> node.put("parameter_name", value));
+            }
+            case CloudTemplateParameter.Currency currency -> {
+                var value = new JSONObject();
+                value.put("fallback_value", currency.fallbackValue());
+                value.put("code", currency.code());
+                value.put("amount_1000", currency.amount1000());
+                node.put("type", "currency");
+                node.put("currency", value);
+            }
+            case CloudTemplateParameter.DateTime dateTime -> {
+                var value = new JSONObject();
+                value.put("fallback_value", dateTime.fallbackValue());
+                node.put("type", "date_time");
+                node.put("date_time", value);
+            }
+            case CloudTemplateParameter.Media media -> {
+                var value = new JSONObject();
+                media.link().ifPresent(link -> value.put("link", link));
+                media.id().ifPresent(id -> value.put("id", id));
+                media.fileName().ifPresent(fileName -> value.put("filename", fileName));
+                node.put("type", media.type().token());
+                node.put(media.type().token(), value);
+            }
+            case CloudTemplateParameter.Location location -> {
+                var value = new JSONObject();
+                value.put("latitude", location.latitude());
+                value.put("longitude", location.longitude());
+                location.name().ifPresent(name -> value.put("name", name));
+                location.address().ifPresent(address -> value.put("address", address));
+                node.put("type", "location");
+                node.put("location", value);
+            }
+            case CloudTemplateParameter.Payload payload -> {
+                node.put("type", "payload");
+                node.put("payload", payload.payload());
+            }
+            case CloudTemplateParameter.CouponCode couponCode -> {
+                node.put("type", "coupon_code");
+                node.put("coupon_code", couponCode.code());
+            }
+            case CloudTemplateParameter.FlowAction flowAction -> {
+                var action = new JSONObject();
+                flowAction.flowToken().ifPresent(token -> action.put("flow_token", token));
+                node.put("type", "action");
+                node.put("action", action);
+            }
+        }
+        return node;
+    }
+
+    /**
      * Encodes one typed template component into its Cloud {@code components} entry.
      *
      * @param component the component to encode
@@ -768,12 +901,12 @@ public final class CloudMessageEncoder {
                 node.put("type", "HEADER");
                 node.put("format", header.format().name());
                 header.text().ifPresent(value -> node.put("text", value));
-                header.example().ifPresent(value -> node.put("example", value));
+                header.example().ifPresent(value -> putExample(node, value));
             }
             case CloudTemplateComponent.Body body -> {
                 node.put("type", "BODY");
                 node.put("text", body.text());
-                body.example().ifPresent(value -> node.put("example", value));
+                body.example().ifPresent(value -> putExample(node, value));
             }
             case CloudTemplateComponent.Footer footer -> {
                 node.put("type", "FOOTER");
@@ -818,6 +951,7 @@ public final class CloudMessageEncoder {
                 node.put("type", "URL");
                 node.put("text", url.text());
                 node.put("url", url.url());
+                url.example().ifPresent(value -> putExample(node, value));
             }
             case CloudTemplateButton.PhoneNumber phoneNumber -> {
                 node.put("type", "PHONE_NUMBER");
@@ -941,6 +1075,7 @@ public final class CloudMessageEncoder {
             case "URL" -> new CloudTemplateButtonUrlBuilder()
                     .text(node.getString("text"))
                     .url(node.getString("url"))
+                    .example(node.getString("example"))
                     .build();
             case "PHONE_NUMBER" -> new CloudTemplateButtonPhoneNumberBuilder()
                     .text(node.getString("text"))
