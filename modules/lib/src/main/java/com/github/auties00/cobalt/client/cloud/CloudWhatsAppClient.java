@@ -980,6 +980,33 @@ public sealed interface CloudWhatsAppClient extends WhatsAppClient<CloudWhatsApp
     void deregisterPhoneNumber();
 
     /**
+     * Queries every field of the phone number's WhatsApp Business profile.
+     *
+     * <p>{@link #queryBusinessProfile()} returns the profile model shared with the linked client, which has no
+     * place for the "about" text, the industry or the profile picture; this returns them too.
+     *
+     * @return the profile, or empty when the server reported none
+     * @throws CloudAuthException if the access token is missing or rejected
+     * @throws CloudApiException if the Graph request fails
+     */
+    Optional<CloudBusinessProfile> queryCloudBusinessProfile();
+
+    /**
+     * Changes fields of the phone number's WhatsApp Business profile; fields the change leaves empty keep their
+     * value.
+     *
+     * <p>A new profile picture is uploaded first through a resumable upload session
+     * ({@link #createResumableUploadSession(long, String, String)} and
+     * {@link #uploadToResumableSession(String, long, byte[])}), whose returned handle the change carries.
+     *
+     * @param edit the fields to change
+     * @throws NullPointerException if {@code edit} is {@code null}
+     * @throws CloudAuthException if the access token is missing or rejected
+     * @throws CloudApiException if the Graph request fails
+     */
+    void editCloudBusinessProfile(CloudBusinessProfileEdit edit);
+
+    /**
      * Queries the details of the phone number this client operates.
      *
      * <p>Returns the full phone-number view, carrying the display-name review status, messaging limit
