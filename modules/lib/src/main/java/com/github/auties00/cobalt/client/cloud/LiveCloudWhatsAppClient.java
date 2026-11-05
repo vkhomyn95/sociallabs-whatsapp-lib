@@ -92,6 +92,11 @@ public final class LiveCloudWhatsAppClient implements CloudWhatsAppClient {
     private static final CloudApiVersion TEMPLATE_HEADER_MEDIA_MIN = CloudApiVersion.V21_0;
 
     /**
+     * The longest alternate webhook callback URL Graph accepts.
+     */
+    private static final int MAX_CALLBACK_URL_LENGTH = 200;
+
+    /**
      * The phone-number stanza fields requested when projecting a {@link CloudPhoneNumber}.
      */
     private static final String PHONE_NUMBER_FIELDS = "id,display_phone_number,verified_name,quality_rating,"
@@ -1379,18 +1384,100 @@ public final class LiveCloudWhatsAppClient implements CloudWhatsAppClient {
      * {@inheritDoc}
      */
     @Override
+    public void subscribeApp(String overrideCallbackUrl, String verifyToken) {
+        var body = new JSONObject();
+        body.put("override_callback_uri", requireCallbackUrl(overrideCallbackUrl));
+        body.put("verify_token", Objects.requireNonNull(verifyToken, "verifyToken must not be null"));
+        api.post(requireWaba() + "/subscribed_apps", body);
+        if (Log.DEBUG) LOGGER.log(Level.DEBUG, "subscribed app to waba webhooks with an alternate callback");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void overridePhoneNumberWebhook(String callbackUrl, String verifyToken) {
+        var configuration = new JSONObject();
+        configuration.put("override_callback_uri", requireCallbackUrl(callbackUrl));
+        configuration.put("verify_token", Objects.requireNonNull(verifyToken, "verifyToken must not be null"));
+        var body = new JSONObject();
+        body.put("webhook_configuration", configuration);
+        api.post(store.phoneNumberId(), body);
+        if (Log.DEBUG) LOGGER.log(Level.DEBUG, "overrode phone number webhook callback");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void removePhoneNumberWebhookOverride() {
+        var configuration = new JSONObject();
+        configuration.put("override_callback_uri", "");
+        var body = new JSONObject();
+        body.put("webhook_configuration", configuration);
+        api.post(store.phoneNumberId(), body);
+        if (Log.DEBUG) LOGGER.log(Level.DEBUG, "removed phone number webhook callback override");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CloudWebhookConfiguration queryWebhookConfiguration() {
+        var response = api.get(store.phoneNumberId(), Map.of("fields", "webhook_configuration"));
+        var configuration = response.getJSONObject("webhook_configuration");
+        if (configuration == null) {
+            return new CloudWebhookConfiguration(null, null, null);
+        }
+        return new CloudWebhookConfiguration(
+                configuration.getString("phone_number"),
+                configuration.getString("whatsapp_business_account"),
+                configuration.getString("application"));
+    }
+
+    /**
+     * Validates an alternate webhook callback URL against the Graph limits.
+     *
+     * @param callbackUrl the callback URL
+     * @return the callback URL
+     * @throws NullPointerException if {@code callbackUrl} is {@code null}
+     * @throws IllegalArgumentException if {@code callbackUrl} is blank or longer than
+     *                                  {@value #MAX_CALLBACK_URL_LENGTH} characters
+     */
+    private static String requireCallbackUrl(String callbackUrl) {
+        Objects.requireNonNull(callbackUrl, "callbackUrl must not be null");
+        if (callbackUrl.isBlank()) {
+            throw new IllegalArgumentException("callbackUrl must not be blank");
+        }
+        if (callbackUrl.length() > MAX_CALLBACK_URL_LENGTH) {
+            throw new IllegalArgumentException("callbackUrl must be at most "
+                    + MAX_CALLBACK_URL_LENGTH + " characters, got " + callbackUrl.length());
+        }
+        return callbackUrl;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<CloudSubscribedApp> querySubscribedApps() {
         var response = api.get(requireWaba() + "/subscribed_apps", Map.of());
         var data = response.getJSONArray("data");
         var result = new ArrayList<CloudSubscribedApp>();
         if (data != null) {
             for (var index = 0; index < data.size(); index++) {
-                var app = data.getJSONObject(index).getJSONObject("whatsapp_business_api_data");
+                var entry = data.getJSONObject(index);
+                var app = entry.getJSONObject("whatsapp_business_api_data");
                 if (app != null && app.getString("id") != null) {
+                    // Graph reports the override beside the app data, not inside it
+                    var overrideCallbackUrl = entry.getString("override_callback_uri");
+                    if (overrideCallbackUrl == null) {
+                        overrideCallbackUrl = app.getString("override_callback_uri");
+                    }
                     result.add(new CloudSubscribedApp(
                             app.getString("id"),
                             app.getString("name"),
-                            app.getString("override_callback_uri")));
+                            overrideCallbackUrl));
                 }
             }
         }

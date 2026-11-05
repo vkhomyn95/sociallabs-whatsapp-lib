@@ -1734,6 +1734,69 @@ public sealed interface CloudWhatsAppClient extends WhatsAppClient<CloudWhatsApp
     void subscribeApp();
 
     /**
+     * Subscribes the configured app to the WhatsApp Business Account's webhooks, delivering them to an
+     * alternate callback URL instead of the app's default.
+     *
+     * <p>Meta verifies the alternate URL with the same {@code hub.challenge} handshake as the app's
+     * default callback, so the endpoint must answer it with {@code verifyToken} before this call returns.
+     * Calling {@link #subscribeApp()} afterwards removes the alternate URL.
+     *
+     * @apiNote Lets a platform that serves many WhatsApp Business Accounts from one app route each
+     *          account's notifications to its own endpoint.
+     * @param overrideCallbackUrl the alternate callback URL, at most 200 characters
+     * @param verifyToken         the token Meta echoes in the verification handshake
+     * @throws NullPointerException if {@code overrideCallbackUrl} or {@code verifyToken} is {@code null}
+     * @throws IllegalArgumentException if {@code overrideCallbackUrl} is blank or longer than 200 characters
+     * @throws CloudAuthException if the access token is missing or rejected
+     * @throws CloudApiException if the Graph request fails, including a failed verification handshake
+     * @throws IllegalStateException if no WhatsApp Business Account id is configured
+     * @see #subscribeApp()
+     * @see #overridePhoneNumberWebhook(String, String)
+     */
+    void subscribeApp(String overrideCallbackUrl, String verifyToken);
+
+    /**
+     * Delivers the webhook notifications of the phone number this client operates to an alternate
+     * callback URL.
+     *
+     * <p>A phone-number override takes precedence over the WhatsApp Business Account override and the
+     * app's default. Meta verifies the URL with the {@code hub.challenge} handshake, answered with
+     * {@code verifyToken}.
+     *
+     * @apiNote Lets each phone number of one WhatsApp Business Account report to its own endpoint.
+     * @param callbackUrl the alternate callback URL, at most 200 characters
+     * @param verifyToken the token Meta echoes in the verification handshake
+     * @throws NullPointerException if {@code callbackUrl} or {@code verifyToken} is {@code null}
+     * @throws IllegalArgumentException if {@code callbackUrl} is blank or longer than 200 characters
+     * @throws CloudAuthException if the access token is missing or rejected
+     * @throws CloudApiException if the Graph request fails, including a failed verification handshake
+     * @see #removePhoneNumberWebhookOverride()
+     * @see #queryWebhookConfiguration()
+     */
+    void overridePhoneNumberWebhook(String callbackUrl, String verifyToken);
+
+    /**
+     * Removes the alternate callback URL of the phone number this client operates, so its notifications
+     * fall back to the WhatsApp Business Account override or the app's default.
+     *
+     * @throws CloudAuthException if the access token is missing or rejected
+     * @throws CloudApiException if the Graph request fails
+     * @see #overridePhoneNumberWebhook(String, String)
+     */
+    void removePhoneNumberWebhookOverride();
+
+    /**
+     * Queries the webhook callback URLs that apply to the phone number this client operates.
+     *
+     * @return the phone-number override, the WhatsApp Business Account override, and the app's default,
+     *         each present when the server reported it
+     * @throws CloudAuthException if the access token is missing or rejected
+     * @throws CloudApiException if the Graph request fails
+     * @see #overridePhoneNumberWebhook(String, String)
+     */
+    CloudWebhookConfiguration queryWebhookConfiguration();
+
+    /**
      * Lists the apps subscribed to the WhatsApp Business Account's webhooks.
      *
      * @apiNote Backs the webhook-subscription overview of a WhatsApp Business Account.
