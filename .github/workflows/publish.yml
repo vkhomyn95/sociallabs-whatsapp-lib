@@ -1,0 +1,57 @@
+name: publish
+
+# Releases the SocialLabs fork (version 0.1.0-sl.N) to GitHub Packages.
+# Push a tag v0.1.0-sl.N whose version matches the POM to publish it.
+
+on:
+  push:
+    tags:
+      - 'v*-sl.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Check the tag matches the POM version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          pom_version=$(sh ./mvnw -B -q help:evaluate -Dexpression=project.version -DforceStdout)
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$pom_version" != "$tag_version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match POM version $pom_version"
+            exit 1
+          fi
+
+      # Upstream tests that call graph.facebook.com fail without a token, so only the
+      # fork's own tests and the Cloud tests that run offline gate the release.
+      - name: Test the fork's patches
+        run: >
+          sh ./mvnw -B install -pl modules/lib -am
+          -Dtest='CloudWebhookOverrideTest,CloudWabaTest,CloudWebhookDecoderTest,CloudWebhookFieldsTest'
+          -Dsurefire.failIfNoSpecifiedTests=false
+
+      - name: Deploy to GitHub Packages
+        run: sh ./mvnw -B deploy -DskipTests
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
