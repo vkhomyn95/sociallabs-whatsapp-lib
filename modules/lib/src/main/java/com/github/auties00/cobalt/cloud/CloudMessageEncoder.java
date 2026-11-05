@@ -21,6 +21,8 @@ import com.github.auties00.cobalt.wire.linked.message.LinkedMessageContainer;
 import com.github.auties00.cobalt.wire.linked.message.commerce.ButtonsMessage;
 import com.github.auties00.cobalt.wire.linked.message.contact.ContactMessage;
 import com.github.auties00.cobalt.wire.linked.message.contact.ContactsArrayMessage;
+import com.github.auties00.cobalt.wire.linked.message.context.ContextInfo;
+import com.github.auties00.cobalt.wire.linked.message.context.ContextualMessage;
 import com.github.auties00.cobalt.wire.linked.message.interactive.InteractiveMessage;
 import com.github.auties00.cobalt.wire.linked.message.interactive.TemplateButton;
 import com.github.auties00.cobalt.wire.linked.message.interactive.TemplateMessage;
@@ -82,7 +84,30 @@ public final class CloudMessageEncoder {
         root.put("recipient_type", "individual");
         root.put("to", recipient.toJid().user());
         encodeContent(root, container);
+        encodeContext(root, container);
         return root;
+    }
+
+    /**
+     * Writes the {@code context} of a contextual reply: the id of the quoted message, taken from the
+     * message's {@link ContextInfo#quotedMessageId()}. Reactions carry no context, since the Cloud API
+     * refuses a reaction sent as a contextual reply; the reaction already names its target message.
+     *
+     * @param root      the request body being assembled
+     * @param container the message content
+     */
+    private static void encodeContext(JSONObject root, LinkedMessageContainer container) {
+        if (!(container.content() instanceof ContextualMessage contextual)
+                || container.content() instanceof ReactionMessage) {
+            return;
+        }
+        contextual.contextInfo()
+                .flatMap(ContextInfo::quotedMessageId)
+                .ifPresent(quotedMessageId -> {
+                    var context = new JSONObject();
+                    context.put("message_id", quotedMessageId);
+                    root.put("context", context);
+                });
     }
 
     /**
@@ -104,7 +129,10 @@ public final class CloudMessageEncoder {
             case ImageMessage image -> media(root, "image", image.mediaUrl().orElse(null), image.caption().orElse(null));
             case VideoMessage video -> media(root, "video", video.mediaUrl().orElse(null), video.caption().orElse(null));
             case AudioMessage audio -> media(root, "audio", audio.mediaUrl().orElse(null), null);
-            case DocumentMessage document -> media(root, "document", document.mediaUrl().orElse(null), document.caption().orElse(null));
+            case DocumentMessage document -> {
+                media(root, "document", document.mediaUrl().orElse(null), document.caption().orElse(null));
+                document.fileName().ifPresent(fileName -> root.getJSONObject("document").put("filename", fileName));
+            }
             case StickerMessage sticker -> media(root, "sticker", sticker.mediaUrl().orElse(null), null);
             case LocationMessage location -> {
                 root.put("type", "location");
