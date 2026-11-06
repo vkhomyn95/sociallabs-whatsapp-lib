@@ -661,8 +661,20 @@ public sealed class LinkedWhatsAppClientBuilder {
              * {@inheritDoc}
              */
             @Override
-            public Mobile name(String name) {
-                return (Mobile) super.name(name);
+            public Web name(String name) {
+                return (Web) super.name(name);
+            }
+
+            /**
+             * Sets the name this companion announces when it is linked, shown in the Linked Devices list
+             * of the primary device; without one the operating system of the emulated browser is shown.
+             *
+             * @param companionName the name, or {@code null} for the default
+             * @return the same instance for chaining
+             */
+            public Web companionName(String companionName) {
+                store.accountStore().setCompanionName(companionName);
+                return this;
             }
 
             /**

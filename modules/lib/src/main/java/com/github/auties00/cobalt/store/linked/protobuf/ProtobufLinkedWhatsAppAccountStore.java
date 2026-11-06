@@ -265,6 +265,11 @@ public final class ProtobufLinkedWhatsAppAccountStore implements LinkedWhatsAppA
     private volatile boolean inactiveGroupLidMigrationComplete;
 
     /**
+     * The name a new companion announces when it is linked; read only while pairing, so not persisted.
+     */
+    private volatile String companionName;
+
+    /**
      * The monitor guarding the lazy initialisation of {@link #clientVersion}; not persisted.
      */
     private final Object clientVersionLock;
@@ -455,6 +460,17 @@ public final class ProtobufLinkedWhatsAppAccountStore implements LinkedWhatsAppA
     @Override
     public LinkedWhatsAppAccountStore setName(String name) {
         this.name = name;
+        return this;
+    }
+
+    @Override
+    public Optional<String> companionName() {
+        return Optional.ofNullable(companionName);
+    }
+
+    @Override
+    public LinkedWhatsAppAccountStore setCompanionName(String companionName) {
+        this.companionName = companionName;
         return this;
     }
 
