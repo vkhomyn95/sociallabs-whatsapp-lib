@@ -932,6 +932,23 @@ public sealed class LinkedWhatsAppClientBuilder {
              *         registered, empty otherwise
              */
             public Optional<LinkedWhatsAppClient> registered() {
+                return registered(DEFAULT_WEB_VERIFICATION_HANDLER);
+            }
+
+            /**
+             * Builds a client for an already-registered web session, with the handler it verifies with should
+             * WhatsApp ask it to link again or to pass a passkey checkpoint.
+             *
+             * @apiNote
+             * A web client always needs a verification handler, a registered one too: the server may unlink it and
+             * ask for a new QR code, and its integrity checkpoints are passkey ceremonies. {@link #registered()} uses
+             * the terminal handler; an embedder without a terminal passes its own.
+             *
+             * @param webVerificationHandler how the session is verified again; never {@code null}
+             * @return the client, or empty when the store is not registered
+             */
+            public Optional<LinkedWhatsAppClient> registered(LinkedWhatsAppClientVerificationHandler.Web webVerificationHandler) {
+                Objects.requireNonNull(webVerificationHandler, "webVerificationHandler must not be null");
                 if (!store.accountStore().registered()) {
                     if (Log.DEBUG) LOGGER.log(Level.DEBUG, "web store is not registered, cannot build client");
                     return Optional.empty();
@@ -939,7 +956,7 @@ public sealed class LinkedWhatsAppClientBuilder {
 
                 if (Log.DEBUG) LOGGER.log(Level.DEBUG, "building web client from registered store");
                 var errorHandler = Objects.requireNonNullElse(this.errorHandler, DEFAULT_ERROR_HANDLER);
-                var result = new LiveLinkedWhatsAppClient(store, null, errorHandler);
+                var result = new LiveLinkedWhatsAppClient(store, webVerificationHandler, errorHandler);
                 return Optional.of(result);
             }
         }
