@@ -19,6 +19,7 @@ The SocialLabs backend uses this fork of [Auties00/Cobalt](https://github.com/Au
 | `feat/cloud-business-profile` | `queryCloudBusinessProfile`/`editCloudBusinessProfile` with `about`, `vertical`, `profile_picture_url`/`profile_picture_handle` |
 | `feat/linked-companion-name` | Linked web client: `Options.Web.name` no longer throws `ClassCastException`; `Options.Web.companionName` sets the name shown under Linked Devices on the phone |
 | `feat/linked-shared-resources` | Linked clients share one connectivity monitor and the HTTP clients (`SharedNetwork`); each client registered a monitor whose two threads were never stopped |
+| `feat/linked-web-registered` | `Options.Web.registered()` no longer fails for every web session (it passed no verification handler); `registered(handler)` takes one |
 
 ## Releasing
 1. Merge or rebase the `feat/*` branches into `sociallabs`.

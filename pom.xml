@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.auties00</groupId>
     <artifactId>cobalt</artifactId>
-    <version>0.1.0-sl.5</version>
+    <version>0.1.0-sl.6</version>
     <packaging>pom</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Standalone fully-featured WhatsApp Web API for Java and Kotlin</description>
