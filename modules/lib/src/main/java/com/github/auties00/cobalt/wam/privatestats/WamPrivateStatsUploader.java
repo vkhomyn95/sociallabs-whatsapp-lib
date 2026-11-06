@@ -14,6 +14,8 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.lang.System.Logger.Level;
 import java.net.URI;
+import com.github.auties00.cobalt.net.SharedNetwork;
+
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -149,7 +151,7 @@ public final class WamPrivateStatsUploader {
      * @throws NullPointerException if either argument is {@code null}
      */
     public WamPrivateStatsUploader(WamPrivateStatsTokenIssuer issuer, WamService wamService) {
-        this(issuer, HttpClient.newHttpClient(), wamService);
+        this(issuer, SharedNetwork.httpClient(), wamService);
     }
 
     /**
