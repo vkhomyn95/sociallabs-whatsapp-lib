@@ -18,6 +18,7 @@ The SocialLabs backend uses this fork of [Auties00/Cobalt](https://github.com/Au
 | `feat/cloud-template-send` | `sendTemplate` with Cloud's own template model (named, currency, date, header media/location, button payload/URL suffix/coupon/flow values); template examples sent as JSON, URL button examples, `parameter_format` |
 | `feat/cloud-business-profile` | `queryCloudBusinessProfile`/`editCloudBusinessProfile` with `about`, `vertical`, `profile_picture_url`/`profile_picture_handle` |
 | `feat/linked-companion-name` | Linked web client: `Options.Web.name` no longer throws `ClassCastException`; `Options.Web.companionName` sets the name shown under Linked Devices on the phone |
+| `feat/linked-shared-resources` | Linked clients share one connectivity monitor and the HTTP clients (`SharedNetwork`); each client registered a monitor whose two threads were never stopped |
 
 ## Releasing
 1. Merge or rebase the `feat/*` branches into `sociallabs`.
