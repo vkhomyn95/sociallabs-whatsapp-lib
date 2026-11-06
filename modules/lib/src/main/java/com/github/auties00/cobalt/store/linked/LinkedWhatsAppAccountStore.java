@@ -156,6 +156,26 @@ public interface LinkedWhatsAppAccountStore {
     LinkedWhatsAppAccountStore setName(String name);
 
     /**
+     * Returns the name a new companion announces when it is linked, shown to the user in the primary
+     * device's Linked Devices list.
+     *
+     * @apiNote
+     * Read only while pairing, from the companion's device properties; it is not persisted, since a
+     * linked companion keeps the name it was linked with.
+     *
+     * @return the companion's name, or empty to announce the operating system of the emulated device
+     */
+    Optional<String> companionName();
+
+    /**
+     * Sets the name a new companion announces when it is linked.
+     *
+     * @param companionName the name, or {@code null} to announce the operating system of the emulated device
+     * @return this store instance for method chaining
+     */
+    LinkedWhatsAppAccountStore setCompanionName(String companionName);
+
+    /**
      * Returns the server-attested business display name on Business Verified accounts.
      *
      * @return the verified business name, or empty if none is set

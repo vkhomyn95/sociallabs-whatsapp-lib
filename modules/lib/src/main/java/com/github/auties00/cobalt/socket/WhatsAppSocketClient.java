@@ -796,7 +796,7 @@ public sealed abstract class WhatsAppSocketClient {
             default -> throw new IllegalStateException("Unexpected value: " + platform);
         };
         var props = new DevicePropsBuilder()
-                .os(os)
+                .os(store.accountStore().companionName().orElse(os))
                 .platformType(platformType)
                 .requireFullSync(sync.isFullHistorySyncRequired())
                 .historySyncConfig(config.build())
