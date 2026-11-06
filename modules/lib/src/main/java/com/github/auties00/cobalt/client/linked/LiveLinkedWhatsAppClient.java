@@ -219,6 +219,7 @@ import com.github.auties00.cobalt.wire.linked.sync.action.privacy.PrivateProcess
 import com.github.auties00.cobalt.wire.linked.sync.action.setting.*;
 import com.github.auties00.cobalt.wire.linked.sync.data.SyncdOperation;
 import com.github.auties00.cobalt.net.*;
+import com.github.auties00.vigil.ConnectivityListener;
 import com.github.auties00.vigil.ConnectivityMonitor;
 import com.github.auties00.cobalt.pairing.CompanionPairingService;
 import com.github.auties00.cobalt.pairing.LiveCompanionPairingService;
@@ -889,7 +890,7 @@ final class LiveLinkedWhatsAppClient implements LinkedWhatsAppClient {
      * <p>Initialised inline rather than injected because the HTTP transports are orthogonal to the
      * socket session and carry no construction-time dependencies.
      */
-    private final HttpClient graphqlHttpClient = HttpClient.newHttpClient();
+    private final HttpClient graphqlHttpClient = SharedNetwork.httpClient();
     /**
      * Outstanding request/response IQ stanzas, keyed by the {@code id}
      * attribute so matching responses can complete them.
@@ -952,6 +953,17 @@ final class LiveLinkedWhatsAppClient implements LinkedWhatsAppClient {
      * the client's lifetime; its event thread is a daemon.
      */
     private final ConnectivityMonitor connectivityMonitor;
+
+    /**
+     * Reconnects as soon as the host is online again; registered with the shared monitor while the
+     * client is connected, so a terminated client is not kept alive by the monitor.
+     */
+    private final ConnectivityListener connectivityListener;
+
+    /**
+     * Whether {@link #connectivityListener} is registered with the shared monitor.
+     */
+    private final AtomicBoolean listeningForConnectivity = new AtomicBoolean();
     /**
      * Drives reconnection with capped exponential backoff on a dedicated
      * thread, gated by the {@link ConnectionState#TERMINATED} state so it idles
@@ -1128,19 +1140,18 @@ final class LiveLinkedWhatsAppClient implements LinkedWhatsAppClient {
         this.nodeStreamService = new LiveNodeStreamService(this, callsService, webVerificationHandler, lidMigrationService, inactiveGroupLidMigrationService, messageService, abPropsService, deviceService, wamService, snapshotRecoveryService, webAppStateService, companionPairingService, shortcakePairingService, ackSender, mediaConnectionService, tosService, quarantineService, passkeyAuthenticator);
         this.disconnecting = new AtomicBoolean();
         this.state = new AtomicReference<>(ConnectionState.ACTIVE);
-        this.connectivityMonitor = ConnectivityMonitor.create();
+        this.connectivityMonitor = SharedNetwork.connectivityMonitor();
         this.reconnectSupervisor = new ReconnectSupervisor(this::reconnectAttempt, this::isConnected, () -> state.get() == ConnectionState.TERMINATED, connectivityMonitor, new Random());
         this.keepAliveService = new LiveKeepAliveService(this::sendPing, () -> disconnect(WhatsAppClientDisconnectReason.RECONNECTING));
         this.facebookGraphQlRefreshLock = new ReentrantLock();
         this.webGraphQlRefreshLock = new ReentrantLock();
         this.tcTokenWaiters = new ConcurrentHashMap<>();
         store.addListener((LinkedTrustedContactTokenListener) this::deliverTrustedContactToken);
-        connectivityMonitor.addListener(event -> {
+        this.connectivityListener = event -> {
             if (event.wentOnline()) {
                 reconnectSupervisor.onConnectivityRegained();
             }
-        });
-        connectivityMonitor.start();
+        };
     }
 
     /** {@inheritDoc} */
@@ -1153,6 +1164,9 @@ final class LiveLinkedWhatsAppClient implements LinkedWhatsAppClient {
     @Override
     public LinkedWhatsAppClient connect() {
         state.set(ConnectionState.ACTIVE);
+        if (listeningForConnectivity.compareAndSet(false, true)) {
+            connectivityMonitor.addListener(connectivityListener);
+        }
         connect(null);
         return this;
     }
@@ -1481,6 +1495,9 @@ final class LiveLinkedWhatsAppClient implements LinkedWhatsAppClient {
 
         if (reason != WhatsAppClientDisconnectReason.RECONNECTING) {
             state.set(ConnectionState.TERMINATED);
+            if (listeningForConnectivity.compareAndSet(true, false)) {
+                connectivityMonitor.removeListener(connectivityListener);
+            }
         }
 
         if (socketClient != null) {

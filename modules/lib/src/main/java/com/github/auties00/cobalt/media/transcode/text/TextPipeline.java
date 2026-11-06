@@ -33,6 +33,8 @@ import it.auties.linkpreview.LinkPreviewMedia;
 
 import java.lang.System.Logger.Level;
 import java.net.URI;
+import com.github.auties00.cobalt.net.SharedNetwork;
+
 import java.net.http.HttpClient;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -157,10 +159,7 @@ public final class TextPipeline {
         this.mediaConnectionService = Objects.requireNonNull(mediaConnectionService, "mediaConnectionService cannot be null");
         this.wamService = Objects.requireNonNull(wamService, "wamService cannot be null");
         this.cache = new LinkPreviewCache();
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .followRedirects(HttpClient.Redirect.ALWAYS)
-                .build();
+        this.httpClient = SharedNetwork.redirectingHttpClient();
     }
 
     /**
